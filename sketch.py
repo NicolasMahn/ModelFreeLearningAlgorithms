@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 
 
-def showList(data, title="Fitness Curve", subtitle="", xLabel="Episodes", yLabel="Return"):
+def showList(data, title="Fitness Curve", subtitle="", x_label="Episodes", y_label="Return"):
     # fig = plt.figure()
     plt.suptitle(title, fontsize=18)  # title
     plt.title(subtitle, fontsize=10)  # subtitle
-    plt.xlabel(xLabel)
-    plt.ylabel(yLabel)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
     plt.plot([data[i] for i in range(0, len(data))], color="black")
     plt.show()

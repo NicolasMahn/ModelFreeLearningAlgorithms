@@ -1,51 +1,53 @@
 import sketch
-import qualityFunction
-import valueFunction
+import quality_function
+import value_function
 import environemnt
 
 
 def main():
-    executeTDN(0)
+    execute_td_n(0)
 
 
-def executeMonteCarlo():
-    v, fitnessCurve, pi = valueFunction.monteCarlo(environemnt.Labyrinth())
+def execute_monte_carlo():
+    v, fitness_curve, pi = value_function.monte_carlo(environemnt.Labyrinth())
     print(pi)
     print(v)
-    sketch.showList(fitnessCurve, subtitle="Monte Carlo")
+    sketch.showList(fitness_curve, subtitle="Monte Carlo")
 
 
-def executeTD0():
-    v, fitnessCurve, pi = valueFunction.td0(environemnt.Labyrinth())
+def execute_td_0():
+    v, fitness_curve, pi = value_function.td_0(environemnt.Labyrinth())
     print(pi)
     print(v)
-    sketch.showList(fitnessCurve, subtitle="TD(0)")
+    sketch.showList(fitness_curve, subtitle="TD(0)")
 
 
-def executeTDN(n):
-    v, fitnessCurve, pi = valueFunction.tdN(environemnt.Labyrinth(),n)
+def execute_td_n(n):
+    v, fitness_curve, pi = value_function.td_n(environemnt.Labyrinth(), n)
     print(pi)
     print(v)
-    sketch.showList(fitnessCurve, subtitle=f"TD({n})")
+    sketch.showList(fitness_curve, subtitle=f"TD({n})")
 
-def executeQ():
-    qualityTable, fitnessCurve, pi = qualityFunction.qLearning(environemnt.Labyrinth())
+
+def execute_q_learning():
+    qualityTable, fitness_curve, pi = quality_function.q_learning(environemnt.Labyrinth())
     print(pi)
     i = 0
     for q in qualityTable:
         print(f"State ({i // 6},{i % 6}): {q}")
         i += 1
-    sketch.showList(fitnessCurve, subtitle="Q-Learning")
+    sketch.showList(fitness_curve, subtitle="Q-Learning")
 
 
-def executeSARSA():
-    qualityTable, fitnessCurve, pi = qualityFunction.sarsa(environemnt.Labyrinth())
+def execute_sarsa():
+    qualityTable, fitness_curve, pi = quality_function.sarsa(environemnt.Labyrinth())
     print(pi)
     i = 0
     for q in qualityTable:
         print(f"State ({i // 6},{i % 6}): {q}")
         i += 1
-    sketch.showList(fitnessCurve, subtitle="SARSA")
+    sketch.showList(fitness_curve, subtitle="SARSA")
+
 
 if __name__ == '__main__':
     main()
