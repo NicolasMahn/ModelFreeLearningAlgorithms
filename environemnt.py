@@ -11,12 +11,12 @@ class Labyrinth:
     height = 6
 
     # Reward
-    rewards = np.matrix([[-1, -1, -1, -1],
-                         [-1, -np.inf, 60, -1],
-                         [-1, -np.inf, -20, -np.inf],
-                         [-1, -1, -1, -1],
-                         [-70, -10, -np.inf, -1],
-                         [-1, -1, -1, -1]])
+    _rewards = np.matrix([[-1, -1, -1, -1],
+                          [-1, -np.inf, 60, -1],
+                          [-1, -np.inf, -20, -np.inf],
+                          [-1, -1, -1, -1],
+                          [-70, -10, -np.inf, -1],
+                          [-1, -1, -1, -1]])
 
     # Actions
     actions = [(-1, -1),  # NW
@@ -28,7 +28,7 @@ class Labyrinth:
                (1, 0),  # S
                (1, 1)]  # SE
 
-    actionsStr = ["NW", "N", "NE", "W", "E", "SW", "S", "SE"]
+    _actionsStr = ["NW", "N", "NE", "W", "E", "SW", "S", "SE"]
 
     # since rewards are actually given for state action pairs
     def getR(self, state, action):
@@ -36,13 +36,13 @@ class Labyrinth:
         if nextState[0] >= self.height or nextState[0] < 0 or nextState[1] >= self.width or nextState[1] < 0:
             return -np.inf
         else:
-            return self.rewards.item(nextState)
+            return self._rewards.item(nextState)
 
     def actionToStr(self, action):
         return self.intActionToStr(self.actions.index(action))
 
     def intActionToStr(self, action):
-        return self.actionsStr[action]
+        return self._actionsStr[action]
 
     # since state is a tuple in this example but not in the QTable
     def stateToInt(self, state):
