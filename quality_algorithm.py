@@ -15,7 +15,7 @@ def get_pi(env, q_table):
                 state = (state[0], state[1] + 1)
                 continue
 
-            possible_actions, possible_q = get_possible_qualities_and_actions()
+            possible_actions, possible_q = get_possible_qualities_and_actions(env, q_table, state)
             max_quality = np.max(possible_q)
             best_actions = \
                 [possible_actions[i] for i in range(0, len(possible_actions)) if possible_q[i] == max_quality]
@@ -27,12 +27,12 @@ def get_pi(env, q_table):
     return pi
 
 
-def get_possible_qualities_and_actions(env, q_table, state):
-    # Even in random case, we cannot choose actions whose r[state, action] = -np.inf.
+def get_possible_qualities_and_actions(env, q_table, state, prev_states=[]):
+    # Even in random case, whose r[state, action] = -np.inf can't be chosen
     possible_actions = []
     possible_q = []
     for action in env.actions:
-        if env.get_r(state, action) != -np.inf:
+        if env.get_r(state, action) != -np.inf and env.get_next_state(state, action) not in prev_states:
             possible_actions.append(action)
             possible_q.append(q_table[env.state_to_int(state), env.action_to_int(action)])
 
@@ -50,6 +50,7 @@ def generic_quality_algorithm(env, function, episodes, gamma, epsilon, alpha, ep
 
         # initial state
         state = env.start_state
+        prev_states = []
 
         return_ = 0
 
@@ -58,7 +59,9 @@ def generic_quality_algorithm(env, function, episodes, gamma, epsilon, alpha, ep
             int_state = env.state_to_int(state)
 
             # choose a possible action
-            possible_actions, possible_q = get_possible_qualities_and_actions(env, q_table, state)
+            possible_actions, possible_q = get_possible_qualities_and_actions(env, q_table, state, prev_states)
+            if len(possible_actions) == 0:
+                break
 
             # Step next state, here we use epsilon-greedy algorithm.
             if random.random() < epsilon:
@@ -80,6 +83,7 @@ def generic_quality_algorithm(env, function, episodes, gamma, epsilon, alpha, ep
                                                       gamma, alpha, epsilon)
 
             # Go to the next state
+            prev_states.append(state)
             state = next_state
 
         fitness_curve.append(return_)
@@ -103,7 +107,7 @@ def q_learning_function(env, reward, quality_state_action, quality_state, next_s
     return quality_state_action + alpha * TDError
 
 
-def q_learning(env, episodes=1000, gamma=0.8, epsilon=1, alpha=0.1, epsilon_decay=0.99, updates=False):
+def q_learning(env, episodes=1000, gamma=0.9, epsilon=0.9, alpha=0.05, epsilon_decay=0.99, updates=False):
     function = q_learning_function
     return generic_quality_algorithm(env, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates)
 
@@ -131,6 +135,6 @@ def sarsa_function(env, reward, quality_state_action, quality_state, next_state,
     return quality_state_action + alpha * td_error
 
 
-def sarsa(env, episodes=1000, gamma=0.8, epsilon=1, alpha=0.1, epsilon_decay=0.99, updates=False):
+def sarsa(env, episodes=1000, gamma=0.9, epsilon=0.9, alpha=0.05, epsilon_decay=0.99, updates=False):
     function = sarsa_function
     return generic_quality_algorithm(env, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates)

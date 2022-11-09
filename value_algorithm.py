@@ -29,8 +29,9 @@ def get_pi(env, v):
     return pi
 
 
-def get_possible_actions(env, state):
-    return [action for action in env.actions if env.get_r(state, action) != -np.inf]
+def get_possible_actions(env, state, prev_state=[]):
+    return [action for action in env.actions if env.get_r(state, action) != -np.inf
+            and env.get_next_state(state, action) not in prev_state]
 
 
 def generic_value_algorithm(env, n, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates):
@@ -44,6 +45,7 @@ def generic_value_algorithm(env, n, function, episodes, gamma, epsilon, alpha, e
 
         # initial state
         state = env.start_state
+        prev_states = []
 
         return_ = 0
 
@@ -52,7 +54,9 @@ def generic_value_algorithm(env, n, function, episodes, gamma, epsilon, alpha, e
 
             # choose a possible action
             # Even in random case, we cannot choose actions whose r[state, action] = -np.inf.
-            possible_actions = get_possible_actions(env, state)
+            possible_actions = get_possible_actions(env, state, prev_states)
+            if len(possible_actions) == 0:
+                break
 
             # Step next state, here we use epsilon-greedy algorithm.
             if random.random() < epsilon:
@@ -68,9 +72,10 @@ def generic_value_algorithm(env, n, function, episodes, gamma, epsilon, alpha, e
             return_ += reward
 
             # Update V value
-            v[state] = function(env, v, n, reward, state, next_state, return_, episode, gamma, alpha)
+            v[state] = function(env, v, n, reward, state, next_state, gamma, alpha)
 
             # Go to the next state
+            prev_states.append(state)
             state = next_state
 
         fitness_curve.append(return_)
@@ -88,13 +93,13 @@ def generic_value_algorithm(env, n, function, episodes, gamma, epsilon, alpha, e
     return v, fitness_curve, get_pi(env, v)
 
 
-def td_n_function(env, v, n, reward, state, next_state, return_, episode, gamma, alpha):
+def td_n_function(env, v, n, reward, state, next_state, gamma, alpha):
     returnN = reward
     v_next_state = v[next_state]
     for cn in range(1, n):
         possible_actions = get_possible_actions(env, next_state)
         action = possible_actions[util.argmax([v[env.get_next_state(next_state, a)] for a in possible_actions])]
-        returnN += math.pow(gamma, cn)*env.get_r(next_state, action)
+        returnN += math.pow(gamma, cn) * env.get_r(next_state, action)
         next_state = env.get_next_state(next_state, action)
         v_next_state = v[next_state]
         if next_state == env.final_state:
@@ -105,26 +110,17 @@ def td_n_function(env, v, n, reward, state, next_state, return_, episode, gamma,
     return v[state] + alpha * td_error
 
 
-def td_n(env, n, episodes=1000, gamma=0.5, epsilon=0.9, alpha=0.05, epsilon_decay=0.99, updates=False):
+def td_n(env, n, episodes=1000, gamma=0.9, epsilon=0.9, alpha=0.05, epsilon_decay=0.99, updates=False):
     function = td_n_function
     return generic_value_algorithm(env, n, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates)
 
 
-def td_0_function(env, v, n, reward, state, next_state, return_, episode, gamma, alpha):
+def td_0_function(env, v, n, reward, state, next_state, gamma, alpha):
     td_target_estimate = reward + gamma * v[next_state]
     td_error = td_target_estimate - v[state]
     return v[state] + alpha * td_error
 
 
-def td_0(env, episodes=1000, gamma=0.5, epsilon=0.9, alpha=0.05, epsilon_decay=0.99, updates=False):
+def td_0(env, episodes=1000, gamma=0.9, epsilon=0.9, alpha=0.05, epsilon_decay=0.99, updates=False):
     function = td_0_function
     return generic_value_algorithm(env, None, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates)
-
-
-def monte_carlo_function(env, v, n, reward, state, next_state, return_, episode, gamma, alpha):
-    return v[state] + (1 / (episode + 1)) * (return_ + v[state])
-
-
-def monte_carlo(env, episodes=1000, epsilon=0.9, epsilon_decay=0.99, updates=False):
-    function = monte_carlo_function
-    return generic_value_algorithm(env, None, function, episodes, None, epsilon, None, epsilon_decay, updates)
