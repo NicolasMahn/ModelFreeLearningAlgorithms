@@ -1,74 +1,85 @@
 import math
-
 import numpy as np
-import numpy.random as random
-import environemnt
 import util
 
+random = np.random.random
+randint = np.random.randint
 
-def get_pi(env, v):
-    pi = {}
-    state = (0, 0)
 
-    while state[0] < env.height:
-        while state[1] < env.width:
+def get_pi_from_v(env, v):
+    pi = dict()
 
-            if env.get_r(state, (0, 0)) == -np.inf:
-                pi[state] = "-"
-                state = (state[0], state[1] + 1)
-                continue
+    for state in env.all_possible_states:
 
-            possible_actions = get_possible_actions(env, state)
-            maxV = np.max([v[env.get_next_state(state, a)] for a in possible_actions])
-            best_actions = [pa for pa in possible_actions if v[env.get_next_state(state, pa)] == maxV]
-            pi[state] = [env.action_to_str(ba) for ba in best_actions]
+        possible_actions, action_possible = env.get_possible_actions(state)
+        if not action_possible:
+            break
 
-            state = (state[0], state[1] + 1)
-        state = (state[0] + 1, 0)
+        # greedy
+        expected_return = dict()
+        for possible_action in possible_actions:
+            possible_next_states = env.get_possible_next_states(state, possible_action)
+            possible_rewards = list()
+            possible_vs = list()
+            if type(possible_next_states[0]) is int:
+                possible_next_states = [[possible_next_states]]
+            for possible_next_state in possible_next_states:
+                possible_rewards.append(env.get_reward(tuple(possible_next_state)))
+                possible_vs.append(v[tuple(possible_next_state)])
+            expected_return[possible_action] = np.average(possible_rewards) + (np.average(possible_vs))
+        int_best_actions = util.argmax_multi([expected_return[a] for a in possible_actions])
 
+        best_actions = [env.action_to_str(possible_actions[int_best_action]) for int_best_action in int_best_actions]
+        pi[state] = best_actions
     return pi
 
 
-def get_possible_actions(env, state, prev_state=[]):
-    return [action for action in env.actions if env.get_r(state, action) != -np.inf
-            and env.get_next_state(state, action) not in prev_state]
-
-
 def generic_value_algorithm(env, n, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates):
-    fitness_curve = []
+    fitness_curve = list()
 
     # Value States
-    v = np.full([env.height, env.width], 0, dtype=float)
+    v = np.full(env.dimensions, 0, dtype=float)
 
     # the main training loop
     for episode in range(episodes + 1):
 
         # initial state
         state = env.start_state
-        prev_states = []
 
+        prev_states = list()
         return_ = 0
 
         # if not final state
-        while state != env.final_state:
+        while not env.done(state):
 
             # choose a possible action
             # Even in random case, we cannot choose actions whose r[state, action] = -np.inf.
-            possible_actions = get_possible_actions(env, state, prev_states)
-            if len(possible_actions) == 0:
+            possible_actions, action_possible = env.get_possible_actions(state, prev_states)
+            if len(possible_actions) == 0 or not action_possible:
                 break
 
             # Step next state, here we use epsilon-greedy algorithm.
-            if random.random() < epsilon:
+            if random() < epsilon:
                 # choose random action
-                action = possible_actions[random.randint(0, len(possible_actions))]
+                action = possible_actions[randint(0, len(possible_actions))]
             else:
                 # greedy
-                action = possible_actions[util.argmax([v[env.get_next_state(state, a)] for a in possible_actions])]
+                expected_return = dict()
+                for possible_action in possible_actions:
+                    possible_next_states = env.get_possible_next_states(state, possible_action)
+                    possible_rewards = list()
+                    possible_vs = list()
+                    if type(possible_next_states[0]) is int:
+                        possible_next_states = [[possible_next_states]]
+                    for possible_next_state in possible_next_states:
+                        possible_rewards.append(env.get_reward(tuple(possible_next_state)))
+                        possible_vs.append(v[tuple(possible_next_state)])
+                    expected_return[possible_action] = np.average(possible_rewards) + (gamma * np.average(possible_vs))
+                action = possible_actions[util.argmax([expected_return[a] for a in possible_actions])]
 
             next_state = env.get_next_state(state, action)
 
-            reward = env.get_r(state, action)
+            reward = env.get_reward(tuple(next_state))
             return_ += reward
 
             # Update V value
@@ -90,19 +101,21 @@ def generic_value_algorithm(env, n, function, episodes, gamma, epsilon, alpha, e
             print(f"the return: {return_}")
             print("------------------------------------------------")
 
-    return v, fitness_curve, get_pi(env, v)
+    return v, fitness_curve
 
 
 def td_n_function(env, v, n, reward, state, next_state, gamma, alpha):
     returnN = reward
     v_next_state = v[next_state]
     for cn in range(1, n):
-        possible_actions = get_possible_actions(env, next_state)
+        possible_actions, action_possible = env.get_possible_actions(next_state)
+        if not action_possible:
+            break
         action = possible_actions[util.argmax([v[env.get_next_state(next_state, a)] for a in possible_actions])]
-        returnN += math.pow(gamma, cn) * env.get_r(next_state, action)
+        returnN += math.pow(gamma, cn) * env.get_reward(env.get_next_state(next_state, action))
         next_state = env.get_next_state(next_state, action)
         v_next_state = v[next_state]
-        if next_state == env.final_state:
+        if env.done(next_state):
             break
 
     td_target_estimate = reward + math.pow(gamma, n) * v_next_state
@@ -110,17 +123,17 @@ def td_n_function(env, v, n, reward, state, next_state, gamma, alpha):
     return v[state] + alpha * td_error
 
 
-def td_n(env, n, episodes=1000, gamma=0.9, epsilon=0.9, alpha=0.05, epsilon_decay=0.99, updates=False):
+def td_n(env, n, episodes=500, gamma=0.9, epsilon=0.4, alpha=0.01, epsilon_decay=0.99, updates=False):
     function = td_n_function
     return generic_value_algorithm(env, n, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates)
 
 
 def td_0_function(env, v, n, reward, state, next_state, gamma, alpha):
-    td_target_estimate = reward + gamma * v[next_state]
+    td_target_estimate = reward + gamma * v[tuple(next_state)]
     td_error = td_target_estimate - v[state]
     return v[state] + alpha * td_error
 
 
-def td_0(env, episodes=1000, gamma=0.9, epsilon=0.9, alpha=0.05, epsilon_decay=0.99, updates=False):
+def td_0(env, episodes=500, gamma=0.9, epsilon=0.4, alpha=0.01, epsilon_decay=0.99, updates=False):
     function = td_0_function
     return generic_value_algorithm(env, None, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates)

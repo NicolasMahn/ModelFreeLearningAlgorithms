@@ -1,84 +1,81 @@
-import math
-
 import numpy as np
-import numpy.random as random
-import environemnt
 import util
 
+random = np.random.random
+randint = np.random.randint
 
-def get_pi(env, v):
-    pi = {}
-    state = (0, 0)
 
-    while state[0] < env.height:
-        while state[1] < env.width:
+def get_pi_from_v(env, v):
+    pi = dict()
 
-            if env.get_r(state, (0, 0)) == -np.inf:
-                pi[state] = "-"
-                state = (state[0], state[1] + 1)
-                continue
+    for state in env.all_possible_states:
 
-            possible_actions = get_possible_actions(env, state)
-            maxV = np.max([v[env.get_next_state(state, a)] for a in possible_actions])
-            best_actions = [pa for pa in possible_actions if v[env.get_next_state(state, pa)] == maxV]
-            pi[state] = [env.action_to_str(ba) for ba in best_actions]
+        possible_actions, action_possible = env.get_possible_actions(state)
+        if not action_possible:
+            break
 
-            state = (state[0], state[1] + 1)
-        state = (state[0] + 1, 0)
+        # greedy
+        # action = argmax of possible actions (reward + gamma*v[next state])
+        int_best_actions = util.argmax_multi(
+            [env.get_reward(env.get_next_state(state, a)) +
+             v[env.get_next_state(state, a)]
+             for a in possible_actions])
 
+        best_actions = [env.action_to_str(possible_actions[int_best_action]) for int_best_action in int_best_actions]
+        pi[state] = best_actions
     return pi
 
 
-def get_possible_actions(env, state, prev_states=[]):
-    return [action for action in env.actions if env.get_r(state, action) != -np.inf
-            and env.get_next_state(state, action) not in prev_states]
-
-
-def monte_carlo(env, episodes=1000, epsilon=0.9, epsilon_decay=0.99, updates=False):
-    fitness_curve = []
+def monte_carlo_generic(env, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates):
+    fitness_curve = list()  # for the graph
 
     # Value States
-    v = np.full([env.height, env.width], 0, dtype=float)
+    v = np.full(env.dimensions, 0, dtype=float)
 
     # N
-    n = np.full([env.height, env.width], 0)
+    n = np.full(env.dimensions, 0)
 
     # the main training loop
     for episode in range(episodes + 1):
 
         # initial state
         state = env.start_state
-        prev_states = []
 
-        return_ = {}
+        prev_states = list()
+        return_ = dict()
 
         # if not final state
-        while state != env.final_state:
+        while not env.done(state):
 
-            # choose a possible action
-            # Even in random case, we cannot choose actions whose r[state, action] = -np.inf.
-            possible_actions = get_possible_actions(env, state, prev_states)
-            if len(possible_actions) == 0:
+            # Even in random case, not all actions are possible
+            possible_actions, action_possible = env.get_possible_actions(state, prev_states)
+            if not action_possible:
                 break
 
             # Step next state, here we use epsilon-greedy algorithm.
-            if random.random() < epsilon:
+            if random() < epsilon:
                 # choose random action
-                action = possible_actions[random.randint(0, len(possible_actions))]
+                action = possible_actions[randint(0, len(possible_actions))]
             else:
                 # greedy
-                action = possible_actions[util.argmax([v[env.get_next_state(state, a)] for a in possible_actions])]
+                # action = argmax of possible actions (reward + gamma*v[next state])
+                action = possible_actions[util.argmax(
+                    [env.get_reward(env.get_next_state(state, a)) +
+                     gamma * v[env.get_next_state(state, a)]
+                     for a in possible_actions])]
 
-            reward = env.get_r(state, action)
-            return_[state] = reward
-            n[state] += 1
-
-            # Go to the next state
+            # prepare for next state
             prev_states.append(state)
-            state = env.get_next_state(state, action)
+            n[state] += 1
+            next_state = env.get_next_state(state, action)
 
-        # Update V value
-        v = monte_carlo_function(v, return_, n)
+            # collect reward
+            return_[state] = env.get_reward(next_state)
+            # Go to the next state
+            state = next_state
+
+        # Update V values
+        v = function(v, return_, n, alpha)
 
         fitness_curve.append(sum(return_.values()))
         epsilon *= epsilon_decay
@@ -91,13 +88,26 @@ def monte_carlo(env, episodes=1000, epsilon=0.9, epsilon_decay=0.99, updates=Fal
             print(f"the return: {sum(return_.values())}")
             print("------------------------------------------------")
 
-    return v, fitness_curve, get_pi(env, v)
+    return v, fitness_curve
 
 
-def monte_carlo_function(v, return_of_s, n):
-    for state in return_of_s:
-        v[state] = v[state] + (1 / (n[state])) * (return_of_s[state] - v[state])
+def monte_carlo(env, episodes=500, gamma=0.9, epsilon=0.4, epsilon_decay=0.99, updates=False):
+    function = monte_carlo_function
+    return monte_carlo_generic(env, function, episodes, gamma, epsilon, None, epsilon_decay, updates)
+
+
+def monte_carlo_function(v, return_, n, alpha):
+    for state in return_:
+        v[state] = v[state] + (1 / n[state]) * (return_[state] - v[state])
     return v
 
 
+def monte_carlo_constant_alpha(env, episodes=500, gamma=0.9, epsilon=0.4, alpha=0.01, epsilon_decay=0.99, updates=False):
+    function = monte_carlo_const_alpha_function
+    return monte_carlo_generic(env, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates)
 
+
+def monte_carlo_const_alpha_function(v, return_, n, alpha):
+    for state in return_:
+        v[state] = v[state] + alpha * (return_[state] - v[state])
+    return v
