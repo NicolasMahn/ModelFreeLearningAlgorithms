@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import util
 
@@ -26,30 +27,28 @@ def get_pi_from_v(env, v):
     return pi
 
 
-def monte_carlo_generic(env, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates):
-    fitness_curve = list()  # for the graph
+def td_0(env, episodes=500, gamma=0.9, epsilon=0.4, alpha=0.01, epsilon_decay=0.99, updates=False, prev_state=False):
+    fitness_curve = list()
 
     # Value States
     v = np.full(env.dimensions, 0, dtype=float)
-
-    # N
-    n = np.full(env.dimensions, 0)
 
     # the main training loop
     for episode in range(episodes + 1):
 
         # initial state
-        state = env.start_state
+        state = env.get_start_state()
 
+        return_ = 0
         prev_states = list()
-        return_ = dict()
 
         # if not final state
         while not env.done(state):
 
-            # Even in random case, not all actions are possible
+            # choose a possible action
+            # Even in random case, we cannot choose actions whose r[state, action] = -np.inf.
             possible_actions, action_possible = env.get_possible_actions(state, prev_states)
-            if not action_possible:
+            if len(possible_actions) == 0 or not action_possible:
                 break
 
             # Step next state, here we use epsilon-greedy algorithm.
@@ -64,50 +63,31 @@ def monte_carlo_generic(env, function, episodes, gamma, epsilon, alpha, epsilon_
                      gamma * v[env.get_next_state(state, a)]
                      for a in possible_actions])]
 
-            # prepare for next state
-            prev_states.append(state)
-            n[state] += 1
             next_state = env.get_next_state(state, action)
 
-            # collect reward
-            return_[state] = env.get_reward(next_state)
+            reward = env.get_reward(tuple(next_state))
+            if prev_state:
+                prev_states.append(state)
+            return_ += reward
+
+            # Update V value
+            td_target_estimate = reward + gamma * v[tuple(next_state)]
+            td_error = td_target_estimate - v[state]
+            v[state] = v[state] + alpha * td_error
+
             # Go to the next state
             state = next_state
 
-        # Update V values
-        v = function(v, return_, n, alpha)
-
-        fitness_curve.append(sum(return_.values()))
+        fitness_curve.append(return_)
         epsilon *= epsilon_decay
 
         # Display training progress
-        if episode % 100 == 0 and updates:
+        if episode % 10 == 0 and updates:
             print("Training episode: %d" % episode)
             print(v)
             # print("     -       -       -")
-            print(f"the return: {sum(return_.values())}")
+            print(f"Current epsilon: {epsilon}")
+            print(f"the return: {return_}")
             print("------------------------------------------------")
 
     return v, fitness_curve
-
-
-def monte_carlo(env, episodes=500, gamma=0.9, epsilon=0.4, epsilon_decay=0.99, updates=False):
-    function = monte_carlo_function
-    return monte_carlo_generic(env, function, episodes, gamma, epsilon, None, epsilon_decay, updates)
-
-
-def monte_carlo_function(v, return_, n, alpha):
-    for state in return_:
-        v[state] = v[state] + (1 / n[state]) * (return_[state] - v[state])
-    return v
-
-
-def monte_carlo_constant_alpha(env, episodes=500, gamma=0.9, epsilon=0.4, alpha=0.01, epsilon_decay=0.99, updates=False):
-    function = monte_carlo_const_alpha_function
-    return monte_carlo_generic(env, function, episodes, gamma, epsilon, alpha, epsilon_decay, updates)
-
-
-def monte_carlo_const_alpha_function(v, return_, n, alpha):
-    for state in return_:
-        v[state] = v[state] + alpha * (return_[state] - v[state])
-    return v
