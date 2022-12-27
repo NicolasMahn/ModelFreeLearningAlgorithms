@@ -37,8 +37,10 @@ def main():
     if num == "1":
         sh.execute_monte_carlo(labyrinth)
     elif num == "2":
+        print("This takes some calculation time")
         sh.avg_monte_carlo(labyrinth, 1000)
     elif num == "3":
+        print("This takes some calculation time")
         sh.vs2(labyrinth, 500, 1000, alg.td_0, "TD(0)", alg.monte_carlo_alpha, "MC")
     elif num == "4":
         sh.execute_td_0(labyrinth)
@@ -51,25 +53,30 @@ def main():
     elif num == "6":
         sh.execute_sarsa(labyrinth)
     elif num == "7":
+        print("This takes some calculation time")
         sh.vs_multi_with_par(labyrinth, 1000, [alg.sarsa, alg.td_0], ["SARSA", "TD(0)"], "SARSA compared to TD(0)",
                              alpha_list=0.1)
     elif num == "8":
+        print("This takes some calculation time")
         sh.vs_multi_with_par(labyrinth, 1000, [alg.q_learning, alg.sarsa], ["Q-Learning", "SARSA"],
                              "Q-Learning compared to SARSA",
                              alpha_list=0.1)
     elif num == "9":
+        print("This takes some calculation time")
         sh.vs_multi_with_par(cliff, 1000, [alg.sarsa, alg.q_learning],
                              ["SARSA", "Q-Learning"], "Cliff Walking",
                              prev_state_list=True,
                              episodes_list=1000,
                              epsilon_list=0.2, epsilon_decay_list=1)
     elif num == "10":
+        print("This takes some calculation time")
         sh.vs_multi_with_par(cliff, 1000, [alg.sarsa, alg.q_learning],
                              ["SARSA", "Q-Learning"], "Cliff Walking",
                              prev_state_list=True,
                              episodes_list=1000,
                              epsilon_list=0.2)
     elif num == "11":
+        print("This takes some calculation time")
         sh.avg_q_learning(ttt_1, 1000, 1000)
     elif num == "12":
         print("This takes some calculation time")

@@ -177,7 +177,7 @@ def avg_td_n(env, n, number_of_iterations):
 
 def execute_q_learning(env):
     start_time = time.perf_counter()
-    quality_table, fitness_curve = alg.q_learning_vs(env)
+    quality_table, fitness_curve = alg.q_learning(env)
     end_time = time.perf_counter()
     execution_time = end_time - start_time
     print(f"The execution time is: {execution_time}")
@@ -190,7 +190,7 @@ def avg_q_learning(env, number_of_iterations, episodes=500):
     fitness_curves = list()
     start_time = time.perf_counter()
     for i in range(0, number_of_iterations):
-        _, fitness_curve = alg.q_learning_vs(env, episodes)
+        _, fitness_curve = alg.q_learning(env, episodes)
         fitness_curves.append(fitness_curve)
     end_time = time.perf_counter()
     execution_time = end_time - start_time
@@ -231,11 +231,10 @@ def avg_q_learning_tictactoe(player=1, number_of_iterations=1000, episodes=1000,
 
 
 def execute_sarsa(env):
-    quality_table, fitness_curve = alg.sarsa_vs(env, alpha=0.1)
-    # for i in range(len(quality_table)):
-    #    print(f"State {env.int_state_to_tuple(i)}: {quality_table[i]}")
+    quality_table, fitness_curve = alg.sarsa(env)
     print(f"pi: \n{alg.get_pi_from_q(env, quality_table)}")
     print(f"v: \n{alg.get_v_from_q(env, quality_table)}")
+    print(f"Q-Table for LaTeX:")
     get_latex_table_from_q_table(env, quality_table)
     show_fitness_curve(fitness_curve, subtitle="SARSA")
 
@@ -244,7 +243,7 @@ def avg_sarsa(env, number_of_iterations):
     fitness_curves = list()
     start_time = time.perf_counter()
     for i in range(0, number_of_iterations):
-        _, fitness_curve = alg.sarsa_vs(env, alpha=0.1)
+        _, fitness_curve = alg.sarsa(env)
         fitness_curves.append(fitness_curve)
     end_time = time.perf_counter()
     execution_time = end_time - start_time

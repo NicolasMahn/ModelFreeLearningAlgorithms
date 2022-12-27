@@ -26,12 +26,7 @@ def get_v_from_q(env, q_table):
     v = dict()
 
     for state in env.all_possible_states:
-
-        possible_actions, possible_q = env.get_possible_qualities_and_actions(q_table, state)
-        if len(possible_actions) == 0:
-            break
-
-        best_state = possible_q[env.state_to_int(state), :].max()
+        best_state = q_table[env.state_to_int(state), :].max()
 
         v[state] = best_state
     return v
